@@ -1,6 +1,6 @@
 # Paneler
 
-Generate 2D cutting patterns for spherical balls and footbags from 3D polyhedra.
+Generate 2D cutting patterns for footbags from 3D polyhedra.
 
 ## Usage
 

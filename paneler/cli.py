@@ -119,11 +119,7 @@ def main():
     # Visualization
     if args.visualize or args.save_viz:
         print("\nCreating 3D visualization...")
-        fig = visualize.visualize_with_face_colors(
-            spherical_mesh,
-            face_groups,
-            title=f"{args.polyhedron.replace('_', ' ').title()} - Spherical Projection"
-        )
+        fig = visualize.visualize_comparison(mesh, spherical_mesh)
 
         if args.save_viz:
             visualize.save_figure(fig, args.save_viz)

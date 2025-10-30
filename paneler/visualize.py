@@ -205,56 +205,108 @@ def visualize_comparison(
     spherical_mesh
 ) -> go.Figure:
     """
-    Side-by-side comparison of original polyhedron and spherical projection.
+    Visualize spherical projection with original polyhedron inside.
 
     Args:
         original_mesh: Original polyhedron (PolyhedronMesh or trimesh.Trimesh)
         spherical_mesh: Spherically projected mesh (PolyhedronMesh or trimesh.Trimesh)
 
     Returns:
-        Plotly figure with subplots
+        Plotly figure
     """
-    from plotly.subplots import make_subplots
+    fig = go.Figure()
 
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=('Original Polyhedron', 'Spherical Projection'),
-        specs=[[{'type': 'scatter3d'}, {'type': 'scatter3d'}]]
-    )
-
-    # Original polyhedron
+    # Original polyhedron - scale to 0.6 to show it's inside the sphere
     tm_orig = _get_trimesh(original_mesh)
-    v_orig = tm_orig.vertices
+    v_orig = tm_orig.vertices * 0.6  # Scale down to show difference
     f_orig = tm_orig.faces
 
+    # Add original polyhedron mesh
     fig.add_trace(
         go.Mesh3d(
             x=v_orig[:, 0], y=v_orig[:, 1], z=v_orig[:, 2],
             i=f_orig[:, 0], j=f_orig[:, 1], k=f_orig[:, 2],
             color='lightblue',
-            opacity=0.8,
+            opacity=0.7,
             flatshading=True,
-        ),
-        row=1, col=1
+            name='Original',
+        )
     )
 
-    # Spherical projection
+    # Add edges to original polyhedron
+    orig_edge_x = []
+    orig_edge_y = []
+    orig_edge_z = []
+    for edge in tm_orig.edges_unique:
+        v0, v1 = edge
+        p0 = v_orig[v0]
+        p1 = v_orig[v1]
+        orig_edge_x.extend([p0[0], p1[0], None])
+        orig_edge_y.extend([p0[1], p1[1], None])
+        orig_edge_z.extend([p0[2], p1[2], None])
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=orig_edge_x, y=orig_edge_y, z=orig_edge_z,
+            mode='lines',
+            line=dict(color='darkblue', width=2),
+            hoverinfo='skip',
+            showlegend=False,
+        )
+    )
+
+    # Spherical projection - just the edges, no mesh
     tm_sphere = _get_trimesh(spherical_mesh)
     v_sphere = tm_sphere.vertices
     f_sphere = tm_sphere.faces
 
+    # Add geodesic edges to spherical projection
+    edge_x = []
+    edge_y = []
+    edge_z = []
+    for edge in tm_sphere.edges_unique:
+        v0, v1 = edge
+        p0 = v_sphere[v0]
+        p1 = v_sphere[v1]
+
+        # Create geodesic curve along sphere surface
+        n_points = 20
+        for i in range(n_points):
+            t = i / (n_points - 1)
+            # Spherical linear interpolation (slerp)
+            cos_angle = np.dot(p0, p1)
+            angle = np.arccos(np.clip(cos_angle, -1, 1))
+
+            if angle < 0.001:  # Points are very close
+                p = (1 - t) * p0 + t * p1
+            else:
+                # Slerp formula
+                sin_angle = np.sin(angle)
+                p = (np.sin((1 - t) * angle) / sin_angle) * p0 + (np.sin(t * angle) / sin_angle) * p1
+
+            # Normalize to ensure point is on sphere
+            p = p / np.linalg.norm(p)
+
+            edge_x.append(p[0])
+            edge_y.append(p[1])
+            edge_z.append(p[2])
+
+        # Add None to separate line segments
+        edge_x.append(None)
+        edge_y.append(None)
+        edge_z.append(None)
+
     fig.add_trace(
-        go.Mesh3d(
-            x=v_sphere[:, 0], y=v_sphere[:, 1], z=v_sphere[:, 2],
-            i=f_sphere[:, 0], j=f_sphere[:, 1], k=f_sphere[:, 2],
-            color='lightcoral',
-            opacity=0.8,
-            flatshading=True,
-        ),
-        row=1, col=2
+        go.Scatter3d(
+            x=edge_x, y=edge_y, z=edge_z,
+            mode='lines',
+            line=dict(color='darkred', width=3),
+            hoverinfo='skip',
+            showlegend=False,
+        )
     )
 
-    # Add reference sphere (wireframe)
+    # Add reference sphere
     theta = np.linspace(0, 2*np.pi, 30)
     phi = np.linspace(0, np.pi, 20)
     theta, phi = np.meshgrid(theta, phi)
@@ -266,27 +318,27 @@ def visualize_comparison(
     fig.add_trace(
         go.Surface(
             x=x_sphere, y=y_sphere, z=z_sphere,
-            colorscale=[[0, 'rgba(200,200,200,0.1)'], [1, 'rgba(200,200,200,0.1)']],
+            colorscale=[[0, 'rgba(255,150,150,0.1)'], [1, 'rgba(255,150,150,0.1)']],
             showscale=False,
             hoverinfo='skip',
-        ),
-        row=1, col=2
+            name='Sphere',
+        )
     )
 
     # Update layout
     fig.update_layout(
+        title=dict(text='Spherical Projection', x=0.5, xanchor='center'),
         showlegend=False,
+        autosize=True,
+        margin=dict(l=0, r=0, t=50, b=0),
         scene=dict(
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
             zaxis=dict(visible=False),
-            aspectmode='data',
-        ),
-        scene2=dict(
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
-            zaxis=dict(visible=False),
-            aspectmode='data',
+            aspectmode='cube',
+            camera=dict(
+                center=dict(x=0, y=0, z=0)
+            ),
         ),
     )
 
