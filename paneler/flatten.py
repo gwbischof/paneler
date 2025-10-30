@@ -223,6 +223,75 @@ def add_seam_allowance(points_2d: np.ndarray, allowance: float) -> np.ndarray:
     return np.array(offset_points)
 
 
+def project_geodesic_edge(p0_3d: np.ndarray, p1_3d: np.ndarray,
+                          n_points: int = 20, method: str = 'stereographic') -> np.ndarray:
+    """
+    Project a geodesic edge (great circle arc) from sphere to 2D as a curve.
+
+    Args:
+        p0_3d: Start point on sphere (3,)
+        p1_3d: End point on sphere (3,)
+        n_points: Number of points to sample along the curve
+        method: Projection method ('stereographic' or 'azimuthal')
+
+    Returns:
+        Array of 2D points along the curve (n_points x 2)
+    """
+    # Sample points along the geodesic using SLERP
+    points_3d = []
+    for i in range(n_points):
+        t = i / (n_points - 1)
+
+        # Spherical linear interpolation
+        cos_angle = np.dot(p0_3d, p1_3d)
+        angle = np.arccos(np.clip(cos_angle, -1, 1))
+
+        if angle < 0.001:  # Points are very close, use linear interpolation
+            p = (1 - t) * p0_3d + t * p1_3d
+        else:
+            # Slerp formula
+            sin_angle = np.sin(angle)
+            p = (np.sin((1 - t) * angle) / sin_angle) * p0_3d + (np.sin(t * angle) / sin_angle) * p1_3d
+
+        # Normalize to ensure point is on sphere
+        p = p / np.linalg.norm(p)
+        points_3d.append(p)
+
+    points_3d = np.array(points_3d)
+
+    # Project all points to 2D using the same method
+    points_2d = flatten_spherical_face(points_3d, method=method)
+
+    return points_2d
+
+
+def get_curved_edges_2d(vertices_3d: np.ndarray, method: str = 'stereographic',
+                        n_points: int = 20) -> list:
+    """
+    Get 2D curved edge paths for a spherical polygon.
+
+    Args:
+        vertices_3d: 3D vertices on sphere (N x 3)
+        method: Projection method
+        n_points: Number of points per edge
+
+    Returns:
+        List of 2D curve arrays, one for each edge
+    """
+    n = len(vertices_3d)
+    curved_edges = []
+
+    for i in range(n):
+        p0 = vertices_3d[i]
+        p1 = vertices_3d[(i + 1) % n]
+
+        # Get curved edge in 2D
+        edge_2d = project_geodesic_edge(p0, p1, n_points=n_points, method=method)
+        curved_edges.append(edge_2d)
+
+    return curved_edges
+
+
 def get_panel_info(vertices_3d: np.ndarray, vertices_2d: np.ndarray) -> dict:
     """
     Calculate panel information and measurements.
@@ -236,7 +305,7 @@ def get_panel_info(vertices_3d: np.ndarray, vertices_2d: np.ndarray) -> dict:
     """
     n = len(vertices_2d)
 
-    # Edge lengths (in 2D flattened space)
+    # Edge lengths (in 2D flattened space - straight line approximation)
     edge_lengths = []
     for i in range(n):
         p0 = vertices_2d[i]

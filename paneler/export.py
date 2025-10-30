@@ -14,7 +14,8 @@ def plot_panel_pattern(
     panel_info: dict,
     title: str = "Panel Pattern",
     show_measurements: bool = True,
-    seam_allowance: float = 0
+    seam_allowance: float = 0,
+    curved_edges: list = None
 ) -> plt.Figure:
     """
     Plot a single panel pattern.
@@ -25,6 +26,7 @@ def plot_panel_pattern(
         title: Panel title
         show_measurements: Whether to show edge measurements
         seam_allowance: Seam allowance distance (if already added to vertices)
+        curved_edges: List of 2D curve arrays for each edge (if None, draws straight edges)
 
     Returns:
         Matplotlib figure
@@ -32,8 +34,14 @@ def plot_panel_pattern(
     fig, ax = plt.subplots(figsize=(8, 8))
 
     # Draw the main panel
-    poly = Polygon(vertices_2d, fill=False, edgecolor='black', linewidth=2)
-    ax.add_patch(poly)
+    if curved_edges is not None:
+        # Draw curved edges
+        for edge_curve in curved_edges:
+            ax.plot(edge_curve[:, 0], edge_curve[:, 1], 'k-', linewidth=2)
+    else:
+        # Draw straight edges (old behavior)
+        poly = Polygon(vertices_2d, fill=False, edgecolor='black', linewidth=2)
+        ax.add_patch(poly)
 
     # Draw seam allowance if specified
     if seam_allowance > 0:
@@ -139,6 +147,9 @@ def export_all_panels(
             # Flatten to 2D
             vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
+            # Get curved edges
+            curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=30)
+
             # Get panel info
             panel_info = flatten.get_panel_info(vertices_3d, vertices_2d)
 
@@ -149,7 +160,8 @@ def export_all_panels(
                 panel_info,
                 title=title,
                 show_measurements=True,
-                seam_allowance=seam_allowance
+                seam_allowance=seam_allowance,
+                curved_edges=curved_edges
             )
 
             pdf.savefig(fig)
@@ -243,6 +255,9 @@ def export_single_panel(
     # Flatten to 2D
     vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
+    # Get curved edges
+    curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=30)
+
     # Get panel info
     panel_info = flatten.get_panel_info(vertices_3d, vertices_2d)
 
@@ -252,7 +267,8 @@ def export_single_panel(
         panel_info,
         title="Panel Pattern",
         show_measurements=True,
-        seam_allowance=seam_allowance
+        seam_allowance=seam_allowance,
+        curved_edges=curved_edges
     )
 
     # Save
@@ -315,6 +331,9 @@ def create_layout_sheet(
             # Flatten
             vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
+            # Get curved edges
+            curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=20)
+
             # Add seam allowance if specified
             if seam_allowance > 0:
                 vertices_2d = flatten.add_seam_allowance(vertices_2d, seam_allowance)
@@ -335,12 +354,13 @@ def create_layout_sheet(
                 print("Warning: Not all panels fit on sheet")
                 break
 
-            # Translate to position
-            positioned = vertices_2d + np.array([x_offset + max_extent/2, y_offset + max_extent/2])
+            # Translate curved edges to position
+            offset = np.array([x_offset + max_extent/2, y_offset + max_extent/2]) - center
 
-            # Draw polygon
-            poly = Polygon(positioned, fill=False, edgecolor='black', linewidth=1)
-            ax.add_patch(poly)
+            # Draw curved edges
+            for edge_curve in curved_edges:
+                positioned_curve = edge_curve + offset
+                ax.plot(positioned_curve[:, 0], positioned_curve[:, 1], 'k-', linewidth=1)
 
             # Move to next position
             x_offset += max_extent + spacing
