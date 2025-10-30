@@ -51,6 +51,12 @@ def _stereographic_projection(vertices: np.ndarray) -> np.ndarray:
     # Apply stereographic projection
     # Project from south pole (0, 0, -1) onto plane z=0
     # Formula: (x, y) = (X/(1-Z), Y/(1-Z))
+
+    # Check if any vertex is too close to south pole (would cause division issues)
+    if np.any(rotated[:, 2] > 0.99):
+        # Fall back to azimuthal projection for stability
+        return _azimuthal_equidistant(vertices)
+
     x = rotated[:, 0] / (1 - rotated[:, 2])
     y = rotated[:, 1] / (1 - rotated[:, 2])
 

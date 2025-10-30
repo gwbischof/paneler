@@ -40,11 +40,19 @@ def get_polyhedron(name: str):
             - 'dodecahedron'
             - 'icosahedron'
             - 'truncated_icosahedron' (classic soccer ball)
+            - Custom: any .obj file in the shapes/ directory (use filename without .obj)
 
     Returns:
         PolyhedronMesh or trimesh.Trimesh: The polyhedron mesh
     """
+    import os
+
     name = name.lower().replace('-', '_').replace(' ', '_')
+
+    # Check if it's a custom shape from shapes/ directory
+    obj_path = os.path.join('shapes', f'{name}.obj')
+    if os.path.exists(obj_path):
+        return _load_from_obj(obj_path)
 
     # Built-in Platonic solids (all triangular faces)
     if name == 'tetrahedron':
@@ -75,7 +83,49 @@ def get_polyhedron(name: str):
         # Truncate by a factor (0.33 is typical for soccer ball proportions)
         return _truncate_polyhedron(ico, truncation_factor=0.33)
     else:
-        raise ValueError(f"Unknown polyhedron: {name}")
+        raise ValueError(f"Unknown polyhedron: {name}. Try adding '{name}.obj' to the shapes/ directory.")
+
+
+def _load_from_obj(obj_path: str) -> PolyhedronMesh:
+    """
+    Load a polyhedron from an OBJ file, preserving polygon faces.
+
+    Args:
+        obj_path: Path to the .obj file
+
+    Returns:
+        PolyhedronMesh loaded from the file
+    """
+    vertices = []
+    faces = []
+
+    with open(obj_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+
+            parts = line.split()
+            if not parts:
+                continue
+
+            if parts[0] == 'v':
+                # Vertex: v x y z
+                vertices.append([float(parts[1]), float(parts[2]), float(parts[3])])
+            elif parts[0] == 'f':
+                # Face: f v1 v2 v3 ... (1-indexed in OBJ format)
+                # May have texture/normal info like "v1/vt1/vn1"
+                face_verts = []
+                for vert_str in parts[1:]:
+                    # Split by '/' and take first part (vertex index)
+                    vert_idx = int(vert_str.split('/')[0]) - 1  # Convert to 0-indexed
+                    face_verts.append(vert_idx)
+                faces.append(face_verts)
+
+    if not vertices or not faces:
+        raise ValueError(f"Could not load valid geometry from {obj_path}")
+
+    return PolyhedronMesh(np.array(vertices, dtype=float), faces)
 
 
 def _truncate_polyhedron(mesh: trimesh.Trimesh, truncation_factor: float = 0.33) -> PolyhedronMesh:
@@ -283,8 +333,11 @@ def _calculate_polygon_area_3d(vertices: np.ndarray) -> float:
 
 
 def list_available_polyhedra() -> list[str]:
-    """List all available polyhedra."""
-    return [
+    """List all available polyhedra (built-in and custom)."""
+    import os
+    import glob
+
+    built_in = [
         'tetrahedron',
         'cube',
         'octahedron',
@@ -292,3 +345,13 @@ def list_available_polyhedra() -> list[str]:
         'icosahedron',
         'truncated_icosahedron',
     ]
+
+    # Find shapes in shapes/ directory
+    shapes_from_files = []
+    if os.path.exists('shapes'):
+        obj_files = glob.glob('shapes/*.obj')
+        shapes_from_files = [os.path.splitext(os.path.basename(f))[0] for f in obj_files]
+
+    # Combine and remove duplicates (OBJ files take precedence)
+    all_shapes = list(dict.fromkeys(shapes_from_files + built_in))
+    return all_shapes

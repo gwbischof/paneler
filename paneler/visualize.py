@@ -233,17 +233,32 @@ def visualize_comparison(
         )
     )
 
-    # Add edges to original polyhedron
+    # Add edges to original polyhedron (from original polygon faces, not triangulated)
+    from . import geometry
     orig_edge_x = []
     orig_edge_y = []
     orig_edge_z = []
-    for edge in tm_orig.edges_unique:
-        v0, v1 = edge
-        p0 = v_orig[v0]
-        p1 = v_orig[v1]
-        orig_edge_x.extend([p0[0], p1[0], None])
-        orig_edge_y.extend([p0[1], p1[1], None])
-        orig_edge_z.extend([p0[2], p1[2], None])
+
+    if isinstance(original_mesh, geometry.PolyhedronMesh):
+        # Use original polygon faces to get edges (no diagonals)
+        for face in original_mesh.faces:
+            for i in range(len(face)):
+                v0 = face[i]
+                v1 = face[(i + 1) % len(face)]
+                p0 = v_orig[v0]
+                p1 = v_orig[v1]
+                orig_edge_x.extend([p0[0], p1[0], None])
+                orig_edge_y.extend([p0[1], p1[1], None])
+                orig_edge_z.extend([p0[2], p1[2], None])
+    else:
+        # Fallback to triangulated edges
+        for edge in tm_orig.edges_unique:
+            v0, v1 = edge
+            p0 = v_orig[v0]
+            p1 = v_orig[v1]
+            orig_edge_x.extend([p0[0], p1[0], None])
+            orig_edge_y.extend([p0[1], p1[1], None])
+            orig_edge_z.extend([p0[2], p1[2], None])
 
     fig.add_trace(
         go.Scatter3d(
@@ -260,11 +275,25 @@ def visualize_comparison(
     v_sphere = tm_sphere.vertices
     f_sphere = tm_sphere.faces
 
-    # Add geodesic edges to spherical projection
+    # Add geodesic edges to spherical projection (from original polygon edges)
     edge_x = []
     edge_y = []
     edge_z = []
-    for edge in tm_sphere.edges_unique:
+
+    # Get edges from original faces to avoid diagonals
+    edge_pairs = set()
+    if isinstance(spherical_mesh, geometry.PolyhedronMesh):
+        for face in spherical_mesh.faces:
+            for i in range(len(face)):
+                v0 = face[i]
+                v1 = face[(i + 1) % len(face)]
+                # Store as sorted tuple to avoid duplicates
+                edge_pairs.add(tuple(sorted([v0, v1])))
+    else:
+        for edge in tm_sphere.edges_unique:
+            edge_pairs.add(tuple(sorted(edge)))
+
+    for edge in edge_pairs:
         v0, v1 = edge
         p0 = v_sphere[v0]
         p1 = v_sphere[v1]
