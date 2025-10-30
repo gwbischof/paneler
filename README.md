@@ -3,7 +3,7 @@
 Calculate panel shapes for footbags from 3D polyhedra.
 
 <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/f1f7273d-a336-4e34-8937-b9e860f3839d" /> 
-<img width="613" height="547" alt="Screenshot 2025-10-29 at 11 48 07 PM" src="https://github.com/user-attachments/assets/06326649-cb98-4d5a-9a86-3fe1613580b2" />
+<img width="256" height="256" alt="Screenshot 2025-10-29 at 11 48 07 PM" src="https://github.com/user-attachments/assets/06326649-cb98-4d5a-9a86-3fe1613580b2" />
 
 ## Usage
 
