@@ -1,9 +1,10 @@
 # Paneler
 
+Calculate panel shapes for footbags from 3D polyhedra.
+
 <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/f1f7273d-a336-4e34-8937-b9e860f3839d" />
 
 
-Generate 2D cutting patterns for footbags from 3D polyhedra.
 
 ## Usage
 
