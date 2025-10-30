@@ -32,58 +32,30 @@ def get_polyhedron(name: str):
     """
     Get a polyhedron by name.
 
+    Loads from .obj file in shapes/ directory.
+    Special case: truncated_icosahedron is generated procedurally.
+
     Args:
-        name: Name of the polyhedron. Options:
-            - 'tetrahedron'
-            - 'cube' or 'hexahedron'
-            - 'octahedron'
-            - 'dodecahedron'
-            - 'icosahedron'
-            - 'truncated_icosahedron' (classic soccer ball)
-            - Custom: any .obj file in the shapes/ directory (use filename without .obj)
+        name: Name of the polyhedron (filename without .obj extension)
 
     Returns:
-        PolyhedronMesh or trimesh.Trimesh: The polyhedron mesh
+        PolyhedronMesh: The polyhedron mesh
     """
     import os
 
     name = name.lower().replace('-', '_').replace(' ', '_')
 
-    # Check if it's a custom shape from shapes/ directory
+    # Special case: truncated icosahedron (too complex for OBJ file)
+    if name == 'truncated_icosahedron':
+        ico = trimesh.creation.icosahedron()
+        return _truncate_polyhedron(ico, truncation_factor=0.33)
+
+    # Load from OBJ file
     obj_path = os.path.join('shapes', f'{name}.obj')
     if os.path.exists(obj_path):
         return _load_from_obj(obj_path)
 
-    # Built-in Platonic solids (all triangular faces)
-    if name == 'tetrahedron':
-        mesh = trimesh.creation.tetrahedron()
-        # Convert to PolyhedronMesh for consistency
-        faces = [list(f) for f in mesh.faces]
-        return PolyhedronMesh(mesh.vertices, faces)
-    elif name in ('cube', 'hexahedron'):
-        mesh = trimesh.creation.box()
-        faces = [list(f) for f in mesh.faces]
-        return PolyhedronMesh(mesh.vertices, faces)
-    elif name == 'octahedron':
-        mesh = trimesh.creation.octahedron()
-        faces = [list(f) for f in mesh.faces]
-        return PolyhedronMesh(mesh.vertices, faces)
-    elif name == 'dodecahedron':
-        mesh = trimesh.creation.icosahedron()
-        faces = [list(f) for f in mesh.faces]
-        return PolyhedronMesh(mesh.vertices, faces)
-    elif name == 'icosahedron':
-        mesh = trimesh.creation.icosahedron()
-        faces = [list(f) for f in mesh.faces]
-        return PolyhedronMesh(mesh.vertices, faces)
-    elif name == 'truncated_icosahedron':
-        # Classic soccer ball: 12 pentagons + 20 hexagons
-        # Start with icosahedron and truncate vertices
-        ico = trimesh.creation.icosahedron()
-        # Truncate by a factor (0.33 is typical for soccer ball proportions)
-        return _truncate_polyhedron(ico, truncation_factor=0.33)
-    else:
-        raise ValueError(f"Unknown polyhedron: {name}. Try adding '{name}.obj' to the shapes/ directory.")
+    raise ValueError(f"Unknown polyhedron: {name}. Add '{name}.obj' to the shapes/ directory or run --list to see available shapes.")
 
 
 def _load_from_obj(obj_path: str) -> PolyhedronMesh:
@@ -333,25 +305,18 @@ def _calculate_polygon_area_3d(vertices: np.ndarray) -> float:
 
 
 def list_available_polyhedra() -> list[str]:
-    """List all available polyhedra (built-in and custom)."""
+    """List all available polyhedra from shapes/ directory."""
     import os
     import glob
 
-    built_in = [
-        'tetrahedron',
-        'cube',
-        'octahedron',
-        'dodecahedron',
-        'icosahedron',
-        'truncated_icosahedron',
-    ]
+    shapes = []
 
-    # Find shapes in shapes/ directory
-    shapes_from_files = []
+    # Add shapes from OBJ files
     if os.path.exists('shapes'):
         obj_files = glob.glob('shapes/*.obj')
-        shapes_from_files = [os.path.splitext(os.path.basename(f))[0] for f in obj_files]
+        shapes = [os.path.splitext(os.path.basename(f))[0] for f in obj_files]
 
-    # Combine and remove duplicates (OBJ files take precedence)
-    all_shapes = list(dict.fromkeys(shapes_from_files + built_in))
-    return all_shapes
+    # Add procedurally generated shape
+    shapes.append('truncated_icosahedron')
+
+    return sorted(shapes)

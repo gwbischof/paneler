@@ -27,13 +27,17 @@ uv run python main.py icosahedron --save-viz shape.html
 
 ## Available Shapes
 
-### Built-in
-- `tetrahedron` - 4 faces
-- `cube` - 6 faces
-- `octahedron` - 8 faces
-- `dodecahedron` - 12 faces
-- `icosahedron` - 20 faces
-- `truncated_icosahedron` - 32 faces (soccer ball)
+All shapes are loaded from `.obj` files in the `shapes/` directory.
 
-### Custom Shapes
-Add your own `.obj` files to the `shapes/` directory and use the filename (without `.obj`) as the shape name. See `shapes/README.md` for details.
+### Included Shapes
+- `tetrahedron` - 4 triangular faces
+- `cube` - 6 square faces
+- `octahedron` - 8 triangular faces
+- `dodecahedron` - 12 pentagonal faces
+- `icosahedron` - 20 triangular faces
+- `pyramid` - 6 triangular faces (example)
+- `cube-diag` - Cube with diagonals (example)
+- `truncated_icosahedron` - 32 faces (classic soccer ball, procedurally generated)
+
+### Add Your Own
+Add `.obj` files to the `shapes/` directory - they'll automatically appear in `--list`. See `shapes/README.md` for details.
