@@ -1,9 +1,14 @@
 # Paneler
 
-Calculate panel shapes for footbags from 3D shapes.
-This program takes an obj file with a shape in it, projects it onto a sphere to figure out the panel shapes, then flattens the panels to 2d.
+Footbag or soccer ball panel generation tool.
+This program takes an obj file with some shape in it, projects it onto a sphere, then flattens it to figure out the panel shapes.
+
+Some features that I plan to add soon:
+- Support for shapes with curved edges
+- Shape generation
 
 
+## Examples
 <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/f1f7273d-a336-4e34-8937-b9e860f3839d" /> 
 <img width="245" height="245" alt="image" src="https://github.com/user-attachments/assets/0c4e1415-36d8-49e7-a066-b36cf2c48a03" />
 
