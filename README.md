@@ -1,6 +1,6 @@
 # Paneler
 
-Calculate panel shapes for footbags from 3D polyhedra.
+Calculate panel shapes for footbags from 3D shapes.
 
 <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/f1f7273d-a336-4e34-8937-b9e860f3839d" /> 
 <img width="256" height="256" alt="Screenshot 2025-10-29 at 11 48 07 PM" src="https://github.com/user-attachments/assets/06326649-cb98-4d5a-9a86-3fe1613580b2" />
