@@ -37,8 +37,12 @@ def _stereographic_projection(vertices: np.ndarray) -> np.ndarray:
     Returns:
         2D points (N x 2)
     """
+    # Normalize to unit sphere
+    radius = np.linalg.norm(vertices[0])
+    vertices_unit = vertices / radius
+
     # Rotate so face center is at north pole
-    center = np.mean(vertices, axis=0)
+    center = np.mean(vertices_unit, axis=0)
     center = center / np.linalg.norm(center)
 
     # Create rotation matrix to align center with z-axis
@@ -46,7 +50,7 @@ def _stereographic_projection(vertices: np.ndarray) -> np.ndarray:
     rotation = _rotation_matrix_from_vectors(center, z_axis)
 
     # Rotate vertices
-    rotated = vertices @ rotation.T
+    rotated = vertices_unit @ rotation.T
 
     # Apply stereographic projection
     # Project from south pole (0, 0, -1) onto plane z=0
@@ -60,7 +64,8 @@ def _stereographic_projection(vertices: np.ndarray) -> np.ndarray:
     x = rotated[:, 0] / (1 - rotated[:, 2])
     y = rotated[:, 1] / (1 - rotated[:, 2])
 
-    return np.column_stack([x, y])
+    # Scale back by radius
+    return np.column_stack([x, y]) * radius
 
 
 def _azimuthal_equidistant(vertices: np.ndarray) -> np.ndarray:
@@ -76,14 +81,18 @@ def _azimuthal_equidistant(vertices: np.ndarray) -> np.ndarray:
     Returns:
         2D points (N x 2)
     """
+    # Normalize to unit sphere
+    radius = np.linalg.norm(vertices[0])
+    vertices_unit = vertices / radius
+
     # Get center of face
-    center = np.mean(vertices, axis=0)
+    center = np.mean(vertices_unit, axis=0)
     center = center / np.linalg.norm(center)
 
     # Rotate so center is at north pole
     z_axis = np.array([0, 0, 1])
     rotation = _rotation_matrix_from_vectors(center, z_axis)
-    rotated = vertices @ rotation.T
+    rotated = vertices_unit @ rotation.T
 
     # Convert to spherical coordinates
     # For points near north pole, use azimuthal equidistant
@@ -104,7 +113,8 @@ def _azimuthal_equidistant(vertices: np.ndarray) -> np.ndarray:
     x_2d = r * np.cos(azimuth)
     y_2d = r * np.sin(azimuth)
 
-    return np.column_stack([x_2d, y_2d])
+    # Scale back by radius
+    return np.column_stack([x_2d, y_2d]) * radius
 
 
 def _rotation_matrix_from_vectors(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
@@ -223,70 +233,86 @@ def add_seam_allowance(points_2d: np.ndarray, allowance: float) -> np.ndarray:
     return np.array(offset_points)
 
 
-def project_geodesic_edge(p0_3d: np.ndarray, p1_3d: np.ndarray,
-                          n_points: int = 20, method: str = 'stereographic') -> np.ndarray:
-    """
-    Project a geodesic edge (great circle arc) from sphere to 2D as a curve.
-
-    Args:
-        p0_3d: Start point on sphere (3,)
-        p1_3d: End point on sphere (3,)
-        n_points: Number of points to sample along the curve
-        method: Projection method ('stereographic' or 'azimuthal')
-
-    Returns:
-        Array of 2D points along the curve (n_points x 2)
-    """
-    # Sample points along the geodesic using SLERP
-    points_3d = []
-    for i in range(n_points):
-        t = i / (n_points - 1)
-
-        # Spherical linear interpolation
-        cos_angle = np.dot(p0_3d, p1_3d)
-        angle = np.arccos(np.clip(cos_angle, -1, 1))
-
-        if angle < 0.001:  # Points are very close, use linear interpolation
-            p = (1 - t) * p0_3d + t * p1_3d
-        else:
-            # Slerp formula
-            sin_angle = np.sin(angle)
-            p = (np.sin((1 - t) * angle) / sin_angle) * p0_3d + (np.sin(t * angle) / sin_angle) * p1_3d
-
-        # Normalize to ensure point is on sphere
-        p = p / np.linalg.norm(p)
-        points_3d.append(p)
-
-    points_3d = np.array(points_3d)
-
-    # Project all points to 2D using the same method
-    points_2d = flatten_spherical_face(points_3d, method=method)
-
-    return points_2d
-
-
-def get_curved_edges_2d(vertices_3d: np.ndarray, method: str = 'stereographic',
-                        n_points: int = 20) -> list:
+def get_curved_edges_2d(vertices_3d: np.ndarray, vertices_2d: np.ndarray,
+                        method: str = 'stereographic', n_points: int = 20) -> list:
     """
     Get 2D curved edge paths for a spherical polygon.
 
+    For spherical panels, edges curve OUTWARD (convex) to account for the
+    spherical geometry. When sewn together, these convex edges create the
+    proper spherical shape under tension.
+
     Args:
         vertices_3d: 3D vertices on sphere (N x 3)
-        method: Projection method
+        vertices_2d: Already projected 2D vertices (N x 2) - used as exact endpoints
+        method: Projection method (currently uses straight lines - no projection artifacts)
         n_points: Number of points per edge
 
     Returns:
-        List of 2D curve arrays, one for each edge
+        List of 2D curve arrays, one for each edge (curved outward)
     """
     n = len(vertices_3d)
     curved_edges = []
 
-    for i in range(n):
-        p0 = vertices_3d[i]
-        p1 = vertices_3d[(i + 1) % n]
+    # Get sphere radius from vertices
+    radius = np.linalg.norm(vertices_3d[0])
 
-        # Get curved edge in 2D
-        edge_2d = project_geodesic_edge(p0, p1, n_points=n_points, method=method)
+    for i in range(n):
+        p0_3d = vertices_3d[i]
+        p1_3d = vertices_3d[(i + 1) % n]
+        p0_2d = vertices_2d[i]
+        p1_2d = vertices_2d[(i + 1) % n]
+
+        # Calculate the geodesic arc length on the sphere
+        cos_angle = np.dot(p0_3d, p1_3d) / (np.linalg.norm(p0_3d) * np.linalg.norm(p1_3d))
+        arc_angle = np.arccos(np.clip(cos_angle, -1, 1))
+        arc_length = radius * arc_angle
+
+        # Straight line distance in 2D
+        straight_dist = np.linalg.norm(p1_2d - p0_2d)
+
+        # The curve should be inward (concave) with depth based on the difference
+        # between chord and arc. For a sphere, the arc is longer than the chord,
+        # so we need to "pull in" the middle of the edge.
+
+        # Calculate curve depth (sagitta) - this is how much the curve dips inward
+        # For small angles: sagitta ≈ (chord^2) / (8 * radius)
+        # But we're working in projected 2D, so we use the arc vs straight difference
+        if arc_angle < 0.001:
+            # Nearly straight, no curve needed
+            edge_2d = np.array([p0_2d, p1_2d])
+        else:
+            # Direction perpendicular to the edge (pointing outward from face center)
+            edge_vec = p1_2d - p0_2d
+            edge_midpoint = (p0_2d + p1_2d) / 2
+            face_center_2d = np.mean(vertices_2d, axis=0)
+
+            # Direction from edge midpoint AWAY from face center (outward)
+            from_center = edge_midpoint - face_center_2d
+            if np.linalg.norm(from_center) > 1e-6:
+                from_center = from_center / np.linalg.norm(from_center)
+            else:
+                # Perpendicular to edge if center is on edge
+                from_center = np.array([-edge_vec[1], edge_vec[0]])
+                from_center = from_center / np.linalg.norm(from_center)
+
+            # Curve depth: proportional to arc angle squared (approximate)
+            # This makes larger panels have more curve
+            curve_depth = straight_dist * (arc_angle ** 2) / 8
+
+            # Create curved edge by offsetting midpoint OUTWARD
+            edge_points = []
+            for j in range(n_points):
+                t = j / (n_points - 1)
+                # Linear interpolation
+                pt = (1 - t) * p0_2d + t * p1_2d
+                # Add outward curve (maximum at t=0.5)
+                curve_amount = curve_depth * (4 * t * (1 - t))  # Parabola, max at t=0.5
+                pt = pt + curve_amount * from_center
+                edge_points.append(pt)
+
+            edge_2d = np.array(edge_points)
+
         curved_edges.append(edge_2d)
 
     return curved_edges

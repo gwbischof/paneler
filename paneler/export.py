@@ -147,8 +147,8 @@ def export_all_panels(
             # Flatten to 2D
             vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
-            # Get curved edges
-            curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=30)
+            # Get curved edges with vertices_2d to ensure proper connection
+            curved_edges = flatten.get_curved_edges_2d(vertices_3d, vertices_2d, method=flatten_method, n_points=30)
 
             # Get panel info
             panel_info = flatten.get_panel_info(vertices_3d, vertices_2d)
@@ -256,7 +256,7 @@ def export_single_panel(
     vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
     # Get curved edges
-    curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=30)
+    curved_edges = flatten.get_curved_edges_2d(vertices_3d, vertices_2d, method=flatten_method, n_points=30)
 
     # Get panel info
     panel_info = flatten.get_panel_info(vertices_3d, vertices_2d)
@@ -332,7 +332,7 @@ def create_layout_sheet(
             vertices_2d = flatten.flatten_spherical_face(vertices_3d, method=flatten_method)
 
             # Get curved edges
-            curved_edges = flatten.get_curved_edges_2d(vertices_3d, method=flatten_method, n_points=20)
+            curved_edges = flatten.get_curved_edges_2d(vertices_3d, vertices_2d, method=flatten_method, n_points=20)
 
             # Add seam allowance if specified
             if seam_allowance > 0:
