@@ -1,6 +1,7 @@
 # Paneler
 
 Calculate panel shapes for footbags from 3D shapes.
+This program takes an obj file with a shape in it, projects it onto a sphere to figure out the panel shapes, then flattens the panels to 2d.
 
 
 <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/f1f7273d-a336-4e34-8937-b9e860f3839d" /> 
