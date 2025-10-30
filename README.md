@@ -42,16 +42,14 @@ uv run python main.py icosahedron --save-viz shape.html
 
 All shapes are loaded from `.obj` files in the `shapes/` directory.
 
-To add a new shape, just add a new obj file to the shapes folder.
-
 ### Included Shapes
 - `tetrahedron` - 4 triangular faces
 - `cube` - 6 square faces
 - `octahedron` - 8 triangular faces
 - `dodecahedron` - 12 pentagonal faces
 - `icosahedron` - 20 triangular faces
-- `pyramid` - 6 triangular faces (example)
-- `cube-diag` - Cube with diagonals (example)
+- `pyramid` - 6 triangular faces
+- `cube-diag` - Cube with diagonals
 - `truncated_icosahedron` - 32 faces (classic soccer ball, procedurally generated)
 
 ### Add Your Own
