@@ -9,7 +9,7 @@ Calculate panel shapes for footbags from 3D shapes.
 --- 
 
 <img width="256" height="256" alt="Screenshot 2025-10-29 at 11 48 07 PM" src="https://github.com/user-attachments/assets/06326649-cb98-4d5a-9a86-3fe1613580b2" />
-<img width="246" height="246" alt="Screenshot 2025-10-30 at 12 27 51 AM" src="https://github.com/user-attachments/assets/b75819d0-848d-4187-b273-27d493b05e50" />
+<img width="236" height="236" alt="Screenshot 2025-10-30 at 12 27 51 AM" src="https://github.com/user-attachments/assets/b75819d0-848d-4187-b273-27d493b05e50" />
 
 
 ## Usage
